@@ -6,7 +6,6 @@ class ZellijTabNamer < Formula
   url "https://github.com/eduardoleal/zellij-tab-namer.git",
       tag:      "v0.2.0",
       revision: "fa7ab9071f5448b28f4f37423efe370bf4e5971d"
-  version "0.2.0"
 
   depends_on "rustup" => :build
   depends_on "python@3.14"
@@ -32,8 +31,7 @@ class ZellijTabNamer < Formula
   def caveats
     <<~EOS
       Install and configure the native plugin with:
-        zellij-tab-namer install --mode wasm \
-          --wasm-source "#{opt_libexec}/plugin/zellij-tab-namer.wasm"
+        zellij-tab-namer install --mode wasm --wasm-source "#{opt_libexec}/plugin/zellij-tab-namer.wasm"
 
       Then stop all Zellij sessions from outside Zellij so the new plugin and
       permission grants are loaded:
