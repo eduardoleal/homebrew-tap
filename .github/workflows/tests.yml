@@ -30,8 +30,12 @@ jobs:
           printf '%s\n' "$ZELLIJ_TAB_NAMER_DEPLOY_KEY" > "$HOME/.ssh/zellij-tab-namer"
           chmod 0600 "$HOME/.ssh/zellij-tab-namer"
           ssh-keyscan -H github.com > "$HOME/.ssh/known_hosts"
+          eval "$(ssh-agent -s)"
+          ssh-add "$HOME/.ssh/zellij-tab-namer"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
           git config --global url."git@github.com:".insteadOf "https://github.com/"
-          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/zellij-tab-namer -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+          ssh -T git@github.com 2>&1 | grep 'successfully authenticated'
 
       - name: Build and test formula
         if: github.actor != 'dependabot[bot]'
