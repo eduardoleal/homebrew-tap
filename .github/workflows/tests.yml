@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  syntax:
+  test-bot:
     runs-on: macos-26
     steps:
       - name: Set up Homebrew
@@ -18,3 +18,21 @@ jobs:
 
       - name: Check tap syntax
         run: brew test-bot --only-tap-syntax
+
+      - name: Configure private upstream access
+        if: github.actor != 'dependabot[bot]'
+        env:
+          ZELLIJ_TAB_NAMER_DEPLOY_KEY: ${{ secrets.ZELLIJ_TAB_NAMER_DEPLOY_KEY }}
+        run: |
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$ZELLIJ_TAB_NAMER_DEPLOY_KEY" > "$HOME/.ssh/zellij-tab-namer"
+          chmod 0600 "$HOME/.ssh/zellij-tab-namer"
+          ssh-keyscan -H github.com > "$HOME/.ssh/known_hosts"
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/zellij-tab-namer -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+
+      - name: Build and test formula
+        if: github.actor != 'dependabot[bot]'
+        run: |
+          brew install --build-from-source eduardoleal/tap/zellij-tab-namer
+          brew test eduardoleal/tap/zellij-tab-namer

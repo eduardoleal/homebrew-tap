@@ -23,3 +23,7 @@ brew info eduardoleal/tap/zellij-tab-namer
 
 The formula builds from the immutable upstream tag and pinned revision. It
 does not edit `~/.config/zellij` during `brew install`.
+
+CI uses a repository-scoped, read-only deploy key to build and test the
+formula against the private upstream source. Dependabot pull requests run the
+syntax gate only because GitHub does not expose Actions secrets to Dependabot.
