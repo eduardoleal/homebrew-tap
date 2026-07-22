@@ -19,11 +19,10 @@ class ZellijTabNamer < Formula
 
     system "rustup", "toolchain", "install", "1.97.1", "--profile", "minimal",
                      "--target", "wasm32-wasip1"
-    # This package intentionally installs a WASM artifact, not a host binary.
-    # rubocop:disable FormulaAudit/Text
-    system "rustup", "run", "1.97.1", "cargo", "build", "--locked", "--release",
-                     "--target", "wasm32-wasip1", "--bin", "zellij-tab-namer"
-    # rubocop:enable FormulaAudit/Text
+    # This package intentionally builds a WASM artifact, not a host binary.
+    cargo_args = %w[cargo build --locked --release --target wasm32-wasip1
+                    --bin zellij-tab-namer]
+    system "rustup", "run", "1.97.1", *cargo_args
 
     virtualenv_install_with_resources
     (libexec/"plugin").install \
