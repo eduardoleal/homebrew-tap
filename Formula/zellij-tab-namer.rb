@@ -12,7 +12,6 @@ class ZellijTabNamer < Formula
 
   url "https://github.com/eduardoleal/zellij-tab-namer/archive/refs/tags/v0.2.0.tar.gz",
       headers: github_api_headers
-  version "0.2.0"
   sha256 "c94e0309900fe5497e17c3355a0e287ef76e4bcda42c64392e09847b019f25f7"
 
   depends_on "python@3.14"
