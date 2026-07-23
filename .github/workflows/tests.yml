@@ -21,21 +21,13 @@ jobs:
       - name: Check tap syntax
         run: brew test-bot --only-tap-syntax
 
-      - name: Configure private upstream access
+      - name: Check private upstream access
         if: github.actor != 'dependabot[bot]'
         env:
-          ZELLIJ_TAB_NAMER_DEPLOY_KEY: ${{ secrets.ZELLIJ_TAB_NAMER_DEPLOY_KEY }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.ZELLIJ_TAB_NAMER_RELEASE_TOKEN }}
         run: |
-          install -d -m 0700 "$HOME/.ssh"
-          printf '%s\n' "$ZELLIJ_TAB_NAMER_DEPLOY_KEY" > "$HOME/.ssh/zellij-tab-namer"
-          chmod 0600 "$HOME/.ssh/zellij-tab-namer"
-          ssh-keyscan -H github.com > "$HOME/.ssh/known_hosts"
-          eval "$(ssh-agent -s)"
-          ssh-add "$HOME/.ssh/zellij-tab-namer"
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
-          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
-          git config --global url."git@github.com:".insteadOf "https://github.com/"
-          ssh -T git@github.com 2>&1 | grep 'successfully authenticated'
+          test -n "$HOMEBREW_GITHUB_API_TOKEN"
+          echo "HOMEBREW_GITHUB_API_TOKEN=$HOMEBREW_GITHUB_API_TOKEN" >> "$GITHUB_ENV"
 
       - name: Build and test formula
         if: github.actor != 'dependabot[bot]'

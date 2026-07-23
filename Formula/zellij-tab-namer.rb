@@ -3,29 +3,35 @@ class ZellijTabNamer < Formula
 
   desc "Name Zellij tabs from pane titles and lightweight local context"
   homepage "https://github.com/eduardoleal/zellij-tab-namer"
-  url "https://github.com/eduardoleal/zellij-tab-namer.git",
-      tag:      "v0.2.0",
-      revision: "fa7ab9071f5448b28f4f37423efe370bf4e5971d"
+  github_token = ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", nil)
+  github_api_headers = [
+    "Accept: application/vnd.github+json",
+    "X-GitHub-Api-Version: 2022-11-28",
+  ]
+  github_api_headers << "Authorization: Bearer #{github_token}" if github_token
 
-  depends_on "rustup" => :build
+  url "https://github.com/eduardoleal/zellij-tab-namer/archive/refs/tags/v0.2.0.tar.gz",
+      headers: github_api_headers
+  version "0.2.0"
+  sha256 "c94e0309900fe5497e17c3355a0e287ef76e4bcda42c64392e09847b019f25f7"
+
   depends_on "python@3.14"
 
+  resource "wasm" do
+    url "https://api.github.com/repos/eduardoleal/zellij-tab-namer/releases/assets/486520223",
+        headers: [
+          "Accept: application/octet-stream",
+          "X-GitHub-Api-Version: 2022-11-28",
+          *("Authorization: Bearer #{github_token}" if github_token),
+        ].compact
+    sha256 "e6f4eb2f404a86dd27cb318d4ce4365869e44ca578b30e1a33932bc73682465b"
+  end
+
   def install
-    rustup_home = buildpath/".rustup"
-    cargo_home = buildpath/".cargo"
-    ENV["RUSTUP_HOME"] = rustup_home
-    ENV["CARGO_HOME"] = cargo_home
-
-    system "rustup", "toolchain", "install", "1.97.1", "--profile", "minimal",
-                     "--target", "wasm32-wasip1"
-    # This package intentionally builds a WASM artifact, not a host binary.
-    cargo_args = %w[cargo build --locked --release --target wasm32-wasip1
-                    --bin zellij-tab-namer]
-    system "rustup", "run", "1.97.1", *cargo_args
-
-    virtualenv_install_with_resources
-    (libexec/"plugin").install \
-      "target/wasm32-wasip1/release/zellij-tab-namer.wasm"
+    virtualenv_install_with_resources without: "wasm"
+    resource("wasm").stage do
+      (libexec/"plugin").install "zellij-tab-namer.wasm"
+    end
   end
 
   def caveats
