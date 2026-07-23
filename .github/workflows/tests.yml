@@ -21,16 +21,11 @@ jobs:
       - name: Check tap syntax
         run: brew test-bot --only-tap-syntax
 
-      - name: Check private upstream access
+      - name: Build and test formula
         if: github.actor != 'dependabot[bot]'
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.ZELLIJ_TAB_NAMER_RELEASE_TOKEN }}
         run: |
           test -n "$HOMEBREW_GITHUB_API_TOKEN"
-          echo "HOMEBREW_GITHUB_API_TOKEN=$HOMEBREW_GITHUB_API_TOKEN" >> "$GITHUB_ENV"
-
-      - name: Build and test formula
-        if: github.actor != 'dependabot[bot]'
-        run: |
           brew install --build-from-source eduardoleal/tap/zellij-tab-namer
           brew test eduardoleal/tap/zellij-tab-namer
