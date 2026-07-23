@@ -10,9 +10,9 @@ class ZellijTabNamer < Formula
   ]
   github_api_headers << "Authorization: Bearer #{github_token}" if github_token
 
-  url "https://github.com/eduardoleal/zellij-tab-namer/archive/refs/tags/v0.2.0.tar.gz",
+  url "https://api.github.com/repos/eduardoleal/zellij-tab-namer/tarball/v0.2.0",
       headers: github_api_headers
-  sha256 "c94e0309900fe5497e17c3355a0e287ef76e4bcda42c64392e09847b019f25f7"
+  sha256 "3aed8e67cbac7f57462b8de9b494fecdf7f15d9efabfc931c79307019d812e16"
 
   depends_on "python@3.14"
 
