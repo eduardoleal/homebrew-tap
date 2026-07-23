@@ -3,29 +3,31 @@ class ZellijTabNamer < Formula
 
   desc "Name Zellij tabs from pane titles and lightweight local context"
   homepage "https://github.com/eduardoleal/zellij-tab-namer"
-  url "https://github.com/eduardoleal/zellij-tab-namer.git",
-      tag:      "v0.2.0",
-      revision: "fa7ab9071f5448b28f4f37423efe370bf4e5971d"
+  github_token = ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", nil)
+  github_asset_headers = [
+    "Accept: application/octet-stream",
+    "X-GitHub-Api-Version: 2022-11-28",
+  ]
+  github_asset_headers << "Authorization: Bearer #{github_token}" if github_token
 
-  depends_on "rustup" => :build
+  url "https://api.github.com/repos/eduardoleal/zellij-tab-namer/releases/assets/487141752",
+      headers: github_asset_headers
+  version "0.2.0"
+  sha256 "f6de1526dac6a05fba4f33df398036be38226ef04d1c1ae3e182e7a74a3a982c"
+
   depends_on "python@3.14"
 
+  resource "wasm" do
+    url "https://api.github.com/repos/eduardoleal/zellij-tab-namer/releases/assets/486520223",
+        headers: github_asset_headers
+    sha256 "e6f4eb2f404a86dd27cb318d4ce4365869e44ca578b30e1a33932bc73682465b"
+  end
+
   def install
-    rustup_home = buildpath/".rustup"
-    cargo_home = buildpath/".cargo"
-    ENV["RUSTUP_HOME"] = rustup_home
-    ENV["CARGO_HOME"] = cargo_home
-
-    system "rustup", "toolchain", "install", "1.97.1", "--profile", "minimal",
-                     "--target", "wasm32-wasip1"
-    # This package intentionally builds a WASM artifact, not a host binary.
-    cargo_args = %w[cargo build --locked --release --target wasm32-wasip1
-                    --bin zellij-tab-namer]
-    system "rustup", "run", "1.97.1", *cargo_args
-
-    virtualenv_install_with_resources
-    (libexec/"plugin").install \
-      "target/wasm32-wasip1/release/zellij-tab-namer.wasm"
+    virtualenv_install_with_resources without: "wasm"
+    resource("wasm").stage do
+      (libexec/"plugin").install "zellij-tab-namer.wasm"
+    end
   end
 
   def caveats
