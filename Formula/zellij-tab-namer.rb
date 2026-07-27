@@ -4,14 +4,14 @@ class ZellijTabNamer < Formula
   desc "Name Zellij tabs from pane titles and lightweight local context"
   homepage "https://github.com/eduardoleal/zellij-tab-namer"
 
-  url "https://github.com/eduardoleal/zellij-tab-namer/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "4271d3ba5c4454190e3aa8272d8148a55577a016d6edc59f287e687a66766ffa"
+  url "https://github.com/eduardoleal/zellij-tab-namer/archive/refs/tags/v0.4.0.tar.gz"
+  sha256 "05d7a434189d135c6a888bf966eb9e2c91650725cd8a9329ea5afd8f4eded62b"
 
   depends_on "python@3.14"
 
   resource "wasm" do
-    url "https://github.com/eduardoleal/zellij-tab-namer/releases/download/v0.3.0/zellij-tab-namer.wasm"
-    sha256 "4910509ac96bc7d604e07852fa6fc5e9a2427c5342a0cb76a721f5c0042b129c"
+    url "https://github.com/eduardoleal/zellij-tab-namer/releases/download/v0.4.0/zellij-tab-namer.wasm"
+    sha256 "e93cc21938636a753436d5fb3ebc5ec542903e3aaa4578263fdfebf3a26f5db8"
   end
 
   def install

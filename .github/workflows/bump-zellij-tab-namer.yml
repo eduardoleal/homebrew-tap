@@ -1,0 +1,172 @@
+name: Bump zellij-tab-namer
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version to package, without the leading v
+        required: false
+        type: string
+
+concurrency:
+  group: bump-zellij-tab-namer
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tap
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Update formula from verified release
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          args=()
+          if [[ -n "$REQUESTED_VERSION" ]]; then
+            args+=(--version "$REQUESTED_VERSION")
+          fi
+          python3 scripts/update_zellij_tab_namer.py "${args[@]}"
+
+      - name: Open or update bump pull request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          branch="automation/zellij-tab-namer-release"
+          repo="$GITHUB_REPOSITORY"
+          owner="$GITHUB_REPOSITORY_OWNER"
+          bot_email="41898282+github-actions[bot]@users.noreply.github.com"
+          title="chore: update zellij tab namer to $VERSION"
+          body=$(cat <<EOF
+          Automated update for [zellij-tab-namer v$VERSION](https://github.com/eduardoleal/zellij-tab-namer/releases/tag/v$VERSION).
+
+          - Recomputed the source archive checksum.
+          - Downloaded the published WASM and verified it against the release checksum.
+          - Updated the source and WASM resource atomically.
+
+          The tap test workflow is dispatched on the updated branch after this PR is created.
+          EOF
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "$bot_email"
+
+          remote_oid=""
+          if git fetch origin \
+            "+refs/heads/$branch:refs/remotes/origin/$branch"; then
+            remote_oid=$(git rev-parse "origin/$branch")
+            unexpected_authors=$(
+              git log --format=%ae "origin/main..origin/$branch" |
+                grep -vxF "$bot_email" || true
+            )
+            unexpected_paths=$(
+              git diff --name-only "origin/main...origin/$branch" |
+                grep -vxF "Formula/zellij-tab-namer.rb" || true
+            )
+            if [[ -n "$unexpected_authors" || -n "$unexpected_paths" ]]; then
+              echo "::error::Automation branch contains non-bot or unrelated changes"
+              exit 1
+            fi
+          fi
+
+          pr_fields=$(
+            gh api "repos/$repo/pulls?state=all&head=$owner:$branch" \
+              --jq 'if length == 0 then "" else
+                [.[0].number, .[0].state, (.[0].merged_at // ""),
+                 .[0].user.login, .[0].head.repo.full_name, .[0].base.ref]
+                | @tsv end'
+          )
+          IFS=$'\t' read -r pr_number pr_state pr_merged_at \
+            pr_author pr_head_repo pr_base <<< "$pr_fields"
+
+          if [[ -n "$pr_number" ]] &&
+             { [[ "$pr_author" != "github-actions[bot]" ]] ||
+               [[ "$pr_head_repo" != "$repo" ]] ||
+               [[ "$pr_base" != "main" ]]; }; then
+            echo "::error::Refusing to reuse pull request #$pr_number"
+            exit 1
+          fi
+
+          remote_matches=false
+          formula_matches=false
+          if [[ -n "$remote_oid" ]] &&
+             git diff --quiet "origin/$branch" -- Formula/zellij-tab-namer.rb; then
+            formula_matches=true
+          fi
+          if [[ -n "$remote_oid" ]] &&
+             git diff --quiet "origin/$branch"; then
+            remote_matches=true
+          fi
+
+          if [[ "$formula_matches" == "true" &&
+                "$pr_state" == "closed" &&
+                -z "$pr_merged_at" ]]; then
+            echo "Closed pull request #$pr_number declines zellij-tab-namer $VERSION"
+            exit 0
+          fi
+
+          if [[ "$remote_matches" == "true" ]]; then
+            head_sha="$remote_oid"
+          else
+            git switch -C "$branch"
+            git add Formula/zellij-tab-namer.rb
+            git commit -m "$title"
+            head_sha=$(git rev-parse HEAD)
+            if [[ -n "$remote_oid" ]]; then
+              git push \
+                --force-with-lease="refs/heads/$branch:$remote_oid" \
+                origin "HEAD:refs/heads/$branch"
+            else
+              git push origin "HEAD:refs/heads/$branch"
+            fi
+          fi
+
+          if [[ "$remote_matches" != "true" || "$pr_state" != "open" ]]; then
+            if [[ "$pr_state" == "open" ]]; then
+              gh api --method PATCH "repos/$repo/pulls/$pr_number" \
+                -f title="$title" \
+                -f body="$body" >/dev/null
+            else
+              pr_number=$(
+                gh api --method POST "repos/$repo/pulls" \
+                  -f title="$title" \
+                  -f head="$branch" \
+                  -f base="main" \
+                  -f body="$body" \
+                  --jq .number
+              )
+            fi
+          else
+            echo "Pull request #$pr_number already contains zellij-tab-namer $VERSION"
+          fi
+
+          dispatch_title="brew test-bot dispatch $head_sha"
+          existing_dispatch=$(
+            gh api --paginate --slurp \
+              "repos/$repo/actions/workflows/tests.yml/runs?event=workflow_dispatch&per_page=100" \
+              | jq -r --arg title "$dispatch_title" \
+                '[.[].workflow_runs[]] | any(.display_title == $title)'
+          )
+          if [[ "$existing_dispatch" == "true" ]]; then
+            echo "Tap tests already dispatched for $head_sha"
+          else
+            gh api --method POST \
+              "repos/$repo/actions/workflows/tests.yml/dispatches" \
+              -f ref="main" \
+              -f "inputs[head_sha]=$head_sha"
+            echo "Updated pull request #$pr_number and dispatched tap tests"
+          fi
