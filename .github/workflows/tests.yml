@@ -1,4 +1,8 @@
 name: brew test-bot
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('brew test-bot dispatch {0}', inputs.head_sha)
+      || format('brew test-bot {0}', github.ref_name) }}
 
 on:
   push:

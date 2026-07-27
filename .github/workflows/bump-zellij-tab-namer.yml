@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Check out tap
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Update formula from verified release
         id: update
@@ -110,10 +112,6 @@ jobs:
             remote_matches=true
           fi
 
-          if [[ "$remote_matches" == "true" && "$pr_state" == "open" ]]; then
-            echo "Pull request #$pr_number already contains zellij-tab-namer $VERSION"
-            exit 0
-          fi
           if [[ "$formula_matches" == "true" &&
                 "$pr_state" == "closed" &&
                 -z "$pr_merged_at" ]]; then
@@ -137,23 +135,38 @@ jobs:
             fi
           fi
 
-          if [[ "$pr_state" == "open" ]]; then
-            gh api --method PATCH "repos/$repo/pulls/$pr_number" \
-              -f title="$title" \
-              -f body="$body" >/dev/null
-          else
-            pr_number=$(
-              gh api --method POST "repos/$repo/pulls" \
+          if [[ "$remote_matches" != "true" || "$pr_state" != "open" ]]; then
+            if [[ "$pr_state" == "open" ]]; then
+              gh api --method PATCH "repos/$repo/pulls/$pr_number" \
                 -f title="$title" \
-                -f head="$branch" \
-                -f base="main" \
-                -f body="$body" \
-                --jq .number
-            )
+                -f body="$body" >/dev/null
+            else
+              pr_number=$(
+                gh api --method POST "repos/$repo/pulls" \
+                  -f title="$title" \
+                  -f head="$branch" \
+                  -f base="main" \
+                  -f body="$body" \
+                  --jq .number
+              )
+            fi
+          else
+            echo "Pull request #$pr_number already contains zellij-tab-namer $VERSION"
           fi
 
-          gh api --method POST \
-            "repos/$repo/actions/workflows/tests.yml/dispatches" \
-            -f ref="main" \
-            -f "inputs[head_sha]=$head_sha"
-          echo "Updated pull request #$pr_number and dispatched tap tests"
+          dispatch_title="brew test-bot dispatch $head_sha"
+          existing_dispatch=$(
+            gh api --paginate --slurp \
+              "repos/$repo/actions/workflows/tests.yml/runs?event=workflow_dispatch&per_page=100" \
+              | jq -r --arg title "$dispatch_title" \
+                '[.[].workflow_runs[]] | any(.display_title == $title)'
+          )
+          if [[ "$existing_dispatch" == "true" ]]; then
+            echo "Tap tests already dispatched for $head_sha"
+          else
+            gh api --method POST \
+              "repos/$repo/actions/workflows/tests.yml/dispatches" \
+              -f ref="main" \
+              -f "inputs[head_sha]=$head_sha"
+            echo "Updated pull request #$pr_number and dispatched tap tests"
+          fi
