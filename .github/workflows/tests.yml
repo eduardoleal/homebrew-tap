@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@df4b09108a1de9d6f995fe68f302b3f68bd6d2ef # 2026.07.20.1
+        uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
